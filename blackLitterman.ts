@@ -1,42 +1,42 @@
 import * as math from 'mathjs';
 
-// --- 型定義 ---
+// --- Type Definitions ---
 type Vector = number[];
 type Matrix = number[][];
 
 /**
- * ブラックリッターマンモデルへの入力
+ * Input for the Black-Litterman model
  */
 interface BlackLittermanInputs {
-    /** tau: スカラー。事前分布（均衡リターン）の不確実性。小さいほど事前分布への信頼度が高い。(例: 0.025) */
+    /** tau: Scalar. Uncertainty of the prior distribution (equilibrium returns). Smaller values indicate higher confidence in the prior. (e.g., 0.025) */
     tau: number;
-    /** P: KxN 行列。投資家のビューのピッキング行列。Kはビューの数、Nは資産の数。 */
+    /** P: K x N matrix. Investor view picking matrix. K is the number of views, N is the number of assets. */
     P: Matrix;
-    /** Q: Kx1 ベクトル。投資家のビューに対応する期待リターン。 */
+    /** Q: K x 1 vector. Expected returns corresponding to investor views. */
     Q: Vector;
-    /** Omega: KxK 行列。ビューの誤差の共分散行列（通常は対角行列）。対角要素が小さいほどビューへの確信度が高い。 */
+    /** Omega: K x K matrix. View error covariance matrix (usually diagonal). Smaller diagonal elements indicate higher confidence in views. */
     Omega: Matrix;
-    /** marketCovariance: NxN 行列 (S)。資産リターンの共分散行列。 */
+    /** marketCovariance: N x N matrix (S). Asset returns covariance matrix. */
     marketCovariance: Matrix;
-    /** marketCapWeights: Nx1 ベクトル (w_mkt)。市場ポートフォリオの各資産のウェイト。 */
+    /** marketCapWeights: N x 1 vector (w_mkt). Market portfolio weights for each asset. */
     marketCapWeights: Vector;
-    /** riskAversion: スカラー (delta)。市場のリスク回避係数。 */
+    /** riskAversion: Scalar (delta). Market risk aversion coefficient. */
     riskAversion: number;
 }
 
 /**
- * ブラックリッターマンモデルからの出力
+ * Output from the Black-Litterman model
  */
 interface BlackLittermanOutputs {
-    /** posteriorReturns: Nx1 ベクトル。ビューを反映した事後期待リターン。 */
+    /** posteriorReturns: N x 1 vector. Posterior expected returns incorporating views. */
     posteriorReturns: Vector;
-    /** posteriorCovariance: NxN 行列。ビューを反映した事後共分散行列（ここでは簡易的に事前共分散を返すか、より複雑な計算も可能）。 */
+    /** posteriorCovariance: N x N matrix. Posterior covariance matrix incorporating views (here we return the prior covariance for simplicity, but more complex calculations are possible). */
     posteriorCovariance: Matrix;
-    /** equilibriumReturns: Nx1 ベクトル。均衡期待リターン。 */
+    /** equilibriumReturns: N x 1 vector. Equilibrium expected returns. */
     equilibriumReturns: Vector;
 }
 
-// --- 行列・ベクトル演算のヘルパー関数 (mathjs を使用) ---
+// --- Matrix/Vector Operation Helper Functions (using mathjs) ---
 
 function transpose(matrix: Matrix): Matrix {
     return math.transpose(matrix) as Matrix;
@@ -63,26 +63,26 @@ function subtract(A: math.MathType, B: math.MathType): math.MathType {
     return math.subtract(A, B);
 }
 
-// ベクトルを列ベクトル (Nx1行列) に変換
+// Convert vector to column vector (N x 1 matrix)
 function toColumnMatrix(vector: Vector): Matrix {
     return vector.map(v => [v]);
 }
 
-// Nx1行列をベクトルに変換
+// Convert N x 1 matrix to vector
 function toVector(matrix: Matrix): Vector {
     return matrix.map(row => row[0]);
 }
 
 
-// --- ブラックリッターマンモデルのコアロジック ---
+// --- Black-Litterman Model Core Logic ---
 
 /**
- * 均衡期待リターン (Implied Equilibrium Returns) を計算します。
+ * Calculates equilibrium expected returns (Implied Equilibrium Returns).
  * Π = δ * S * w_mkt
- * @param riskAversion リスク回避係数 (δ)
- * @param S 市場の共分散行列 (N x N)
- * @param wMkt 市場ポートフォリオのウェイト (N x 1)
- * @returns 均衡期待リターンベクトル (N x 1)
+ * @param riskAversion Risk aversion coefficient (δ)
+ * @param S Market covariance matrix (N x N)
+ * @param wMkt Market portfolio weights (N x 1)
+ * @returns Equilibrium expected returns vector (N x 1)
  */
 function calculateEquilibriumReturns(
     riskAversion: number,
@@ -104,16 +104,16 @@ function calculateEquilibriumReturns(
 }
 
 /**
- * ブラックリッターマンの事後期待リターン (Posterior Expected Returns) を計算します。
+ * Calculates Black-Litterman posterior expected returns (Posterior Expected Returns).
  * E[R] = Π + (τS)Pᵀ[P(τS)Pᵀ + Ω]⁻¹(Q - PΠ)
  *
- * @param tau 事前分布の不確実性を示すスカラー
- * @param S 市場の共分散行列 (N x N)
- * @param Pi_eq 均衡期待リターンベクトル (N x 1)
- * @param P ビューのピッキング行列 (K x N)
- * @param Q ビューの期待リターンベクトル (K x 1)
- * @param Omega ビューの誤差の共分散行列 (K x K)
- * @returns 事後期待リターンベクトル (N x 1)
+ * @param tau Scalar indicating uncertainty of the prior distribution
+ * @param S Market covariance matrix (N x N)
+ * @param Pi_eq Equilibrium expected returns vector (N x 1)
+ * @param P View picking matrix (K x N)
+ * @param Q View expected returns vector (K x 1)
+ * @param Omega View error covariance matrix (K x K)
+ * @returns Posterior expected returns vector (N x 1)
  */
 function calculateBlackLittermanPosteriorReturns(
     tau: number,
@@ -123,8 +123,8 @@ function calculateBlackLittermanPosteriorReturns(
     Q: Vector,
     Omega: Matrix
 ): Vector {
-    const N = S.length; // 資産数
-    const K = Q.length; // ビューの数
+    const N = S.length; // Number of assets
+    const K = Q.length; // Number of views
 
     if (P.length !== K || (P[0] && P[0].length !== N)) {
         throw new Error("Dimension mismatch for P matrix.");
@@ -145,7 +145,7 @@ function calculateBlackLittermanPosteriorReturns(
     // P * Π
     const P_Pi = multiply(P, Pi_eq_col) as Matrix; // (K x N) * (N x 1) = K x 1
 
-    // Q - P * Π (ビューの超過リターン)
+    // Q - P * Π (view excess returns)
     const Q_minus_P_Pi = subtract(Q_col, P_Pi) as Matrix; // K x 1
 
     // P * (τS)
@@ -175,11 +175,11 @@ function calculateBlackLittermanPosteriorReturns(
     return toVector(posteriorReturnsMatrix);
 }
 
-// --- メイン関数 ---
+// --- Main Function ---
 /**
- * ブラックリッターマンモデルを実行します。
- * @param inputs ブラックリッターマンモデルへの入力
- * @returns ブラックリッターマンモデルからの出力
+ * Runs the Black-Litterman model.
+ * @param inputs Black-Litterman model inputs
+ * @returns Black-Litterman model outputs
  */
 function runBlackLitterman(inputs: BlackLittermanInputs): BlackLittermanOutputs {
     const {
@@ -192,14 +192,14 @@ function runBlackLitterman(inputs: BlackLittermanInputs): BlackLittermanOutputs 
         riskAversion,
     } = inputs;
 
-    // 1. 均衡期待リターン (Π) を計算
+    // 1. Calculate equilibrium expected returns (Π)
     const equilibriumReturns = calculateEquilibriumReturns(
         riskAversion,
         marketCovariance,
         marketCapWeights
     );
 
-    // 2. 事後期待リターン (E[R]) を計算
+    // 2. Calculate posterior expected returns (E[R])
     const posteriorReturns = calculateBlackLittermanPosteriorReturns(
         tau,
         marketCovariance,
@@ -209,11 +209,11 @@ function runBlackLitterman(inputs: BlackLittermanInputs): BlackLittermanOutputs 
         Omega
     );
 
-    // 注意: ブラックリッターマンモデルにおける事後共分散行列も導出可能です。
+    // Note: The posterior covariance matrix in the Black-Litterman model can also be derived.
     // M_posterior_inv = (tau*S)^-1 + P^T * Omega^-1 * P
     // M_posterior = (M_posterior_inv)^-1
-    // ポートフォリオ最適化には、この事後共分散行列、あるいは単純化して元の市場共分散行列 (S) を使用します。
-    // ここでは、簡潔さのために元の marketCovariance を返しますが、必要に応じて事後共分散を計算してください。
+    // For portfolio optimization, use this posterior covariance matrix, or simply the original market covariance matrix (S).
+    // Here, for simplicity, we return the original marketCovariance, but calculate posterior covariance if needed.
     // const tauS_inv = inverse(multiply(tau, marketCovariance) as Matrix);
     // const PT_Omega_inv = multiply(transpose(P), inverse(Omega)) as Matrix;
     // const PT_Omega_inv_P = multiply(PT_Omega_inv, P) as Matrix;
@@ -222,48 +222,48 @@ function runBlackLitterman(inputs: BlackLittermanInputs): BlackLittermanOutputs 
 
     return {
         posteriorReturns,
-        posteriorCovariance: marketCovariance, // または上記で計算した posteriorCovariance
+        posteriorCovariance: marketCovariance, // Or use the calculated posteriorCovariance above
         equilibriumReturns,
     };
 }
 
-// --- 使用例 ---
+// --- Usage Example ---
 function exampleUsage() {
-    console.log("--- ブラックリッターマンモデル実行例 ---");
+    console.log("--- Black-Litterman Model Execution Example ---");
 
-    // 例：3資産、2つのビュー
+    // Example: 3 assets, 2 views
     const numAssets = 3;
     const numViews = 2;
 
-    // 市場データ
+    // Market data
     const marketCovariance: Matrix = [ // S (NxN)
-        [0.0225, 0.0068, 0.0033], // 例: [Asset1_Var, Asset1_Asset2_Cov, Asset1_Asset3_Cov]
-        [0.0068, 0.0289, 0.0078], // 例: [Asset2_Asset1_Cov, Asset2_Var, Asset2_Asset3_Cov]
-        [0.0033, 0.0078, 0.0441], // 例: [Asset3_Asset1_Cov, Asset3_Asset2_Cov, Asset3_Var]
+        [0.0225, 0.0068, 0.0033], // e.g., [Asset1_Var, Asset1_Asset2_Cov, Asset1_Asset3_Cov]
+        [0.0068, 0.0289, 0.0078], // e.g., [Asset2_Asset1_Cov, Asset2_Var, Asset2_Asset3_Cov]
+        [0.0033, 0.0078, 0.0441], // e.g., [Asset3_Asset1_Cov, Asset3_Asset2_Cov, Asset3_Var]
     ];
-    const marketCapWeights: Vector = [0.5, 0.3, 0.2]; // w_mkt (Nx1) - 合計100%
-    const riskAversion: number = 3.0; // delta - リスク回避係数
+    const marketCapWeights: Vector = [0.5, 0.3, 0.2]; // w_mkt (Nx1) - Total 100%
+    const riskAversion: number = 3.0; // delta - Risk aversion coefficient
 
-    // 投資家のビュー
-    // P (KxN): 各行が1つのビュー。
-    // ビュー1: 資産1が資産2を1%アウトパフォームする (Asset1 - Asset2 = 0.01)
-    // ビュー2: 資産3が絶対リターンで4%となる (Asset3 = 0.04)
+    // Investor views
+    // P (KxN): Each row represents one view.
+    // View 1: Asset 1 outperforms Asset 2 by 1% (Asset1 - Asset2 = 0.01)
+    // View 2: Asset 3 has an absolute return of 4% (Asset3 = 0.04)
     const P: Matrix = [
         [1, -1, 0],
         [0,  0, 1],
     ];
-    const Q: Vector = [0.01, 0.04]; // Q (Kx1): ビューに対応するリターン
+    const Q: Vector = [0.01, 0.04]; // Q (Kx1): Returns corresponding to views
 
-    // Omega (KxK): ビューの不確実性 (分散)。対角要素が小さいほど確信度が高い。
-    // 通常は対角行列。非対角要素はビュー間の相関。
-    const view1Variance = 0.0001; // ビュー1の誤差の分散 (標準偏差0.01)
-    const view2Variance = 0.0005; // ビュー2の誤差の分散 (標準偏差 approx 0.022)
+    // Omega (KxK): View uncertainty (variance). Smaller diagonal elements indicate higher confidence.
+    // Usually a diagonal matrix. Off-diagonal elements represent correlations between views.
+    const view1Variance = 0.0001; // View 1 error variance (std dev 0.01)
+    const view2Variance = 0.0005; // View 2 error variance (std dev approx 0.022)
     const Omega: Matrix = [
         [view1Variance, 0],
         [0, view2Variance],
     ];
 
-    const tau: number = 0.05; // 事前分布の不確実性に関するスカラー
+    const tau: number = 0.05; // Scalar for prior distribution uncertainty
 
     const inputs: BlackLittermanInputs = {
         tau,
@@ -278,47 +278,47 @@ function exampleUsage() {
     try {
         const outputs = runBlackLitterman(inputs);
 
-        console.log("\n入力データ:");
+        console.log("\nInput Data:");
         console.log("Tau:", tau);
-        console.log("P (ビュー行列):"); P.forEach(row => console.log(row));
-        console.log("Q (ビューリターン):", Q);
-        console.log("Omega (ビュー誤差共分散):"); Omega.forEach(row => console.log(row));
-        console.log("市場共分散行列 S:"); marketCovariance.forEach(row => console.log(row));
-        console.log("市場ウェイト w_mkt:", marketCapWeights);
-        console.log("リスク回避係数 delta:", riskAversion);
+        console.log("P (View Matrix):"); P.forEach(row => console.log(row));
+        console.log("Q (View Returns):", Q);
+        console.log("Omega (View Error Covariance):"); Omega.forEach(row => console.log(row));
+        console.log("Market Covariance Matrix S:"); marketCovariance.forEach(row => console.log(row));
+        console.log("Market Weights w_mkt:", marketCapWeights);
+        console.log("Risk Aversion Coefficient delta:", riskAversion);
 
-        console.log("\n--- モデル出力 ---");
-        console.log("均衡期待リターン (Π):");
-        outputs.equilibriumReturns.forEach((ret, i) => console.log(`  資産 ${i+1}: ${(ret * 100).toFixed(3)}%`));
+        console.log("\n--- Model Output ---");
+        console.log("Equilibrium Expected Returns (Π):");
+        outputs.equilibriumReturns.forEach((ret, i) => console.log(`  Asset ${i+1}: ${(ret * 100).toFixed(3)}%`));
 
-        console.log("\n事後期待リターン (E[R]):");
-        outputs.posteriorReturns.forEach((ret, i) => console.log(`  資産 ${i+1}: ${(ret * 100).toFixed(3)}%`));
+        console.log("\nPosterior Expected Returns (E[R]):");
+        outputs.posteriorReturns.forEach((ret, i) => console.log(`  Asset ${i+1}: ${(ret * 100).toFixed(3)}%`));
 
-        // console.log("\n事後共分散行列 (Posterior Covariance):"); // 必要であれば表示
+        // console.log("\nPosterior Covariance Matrix:"); // Display if needed
         // outputs.posteriorCovariance.forEach(row => console.log(row.map(val => val.toFixed(5))));
 
-        console.log("\n--- 次のステップ ---");
-        console.log("上記の事後期待リターンと（事後または事前の）共分散行列を使用して、ポートフォリオ最適化を行います。");
+        console.log("\n--- Next Steps ---");
+        console.log("Use the above posterior expected returns and (posterior or prior) covariance matrix for portfolio optimization.");
 
     } catch (error) {
         if (error instanceof Error) {
-            console.error("ブラックリッターマンモデルの計算中にエラーが発生しました:", error.message);
+            console.error("Error occurred during Black-Litterman model calculation:", error.message);
         } else {
-            console.error("ブラックリッターマンモデルの計算中に不明なエラーが発生しました:", error);
+            console.error("Unknown error occurred during Black-Litterman model calculation:", error);
         }
     }
 }
 
-// 使用例を実行
+// Run usage example
 exampleUsage();
 
 /*
-実行方法:
-1. このコードを `blackLitterman.ts` のようなファイル名で保存します。
-2. Node.js と TypeScript がインストールされていることを確認します。
+Execution instructions:
+1. Save this code as a file named `blackLitterman.ts`.
+2. Make sure Node.js and TypeScript are installed.
    `npm install -g typescript ts-node`
-3. mathjs をインストールします。
+3. Install mathjs.
    `npm install mathjs @types/mathjs`
-4. ターミナルで以下を実行します。
+4. Run the following in your terminal:
    `node --loader ts-node/esm blackLitterman.ts`
 */

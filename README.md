@@ -1,48 +1,48 @@
-# ブラックリッターマンモデル Node.js/TypeScript 実装
+# Black-Litterman Model Node.js/TypeScript Implementation
 
-## 概要
+## Overview
 
-このプロジェクトは、フィッシャー・ブラックとロバート・リッターマンによって提唱されたブラックリッターマンモデルを、Node.js 環境で TypeScript を用いて実装したものです。
-このモデルは、市場の均衡リターンと投資家の主観的なビュー（市場予測）を統合し、ポートフォリオの最適な資産配分を導き出すために利用されます。
+This project is a Node.js/TypeScript implementation of the Black-Litterman model, proposed by Fischer Black and Robert Litterman.
+This model integrates market equilibrium returns with investor's subjective views (market forecasts) to derive optimal asset allocation for a portfolio.
 
-この実装では、モデルのコアロジックである均衡リターンの計算、および投資家のビューを反映した事後期待リターンの計算に焦点を当てています。
+This implementation focuses on the core logic of the model: calculating equilibrium returns and computing posterior expected returns that incorporate investor views.
 
-## 特徴
+## Features
 
-* TypeScript による型安全な実装
-* 行列演算ライブラリ `mathjs` を使用
-* 最新の Node.js 環境 (ESモジュール) での動作を想定
-* 投資家のビュー（絶対ビュー・相対ビュー）とその確信度を考慮可能
+* Type-safe implementation using TypeScript
+* Uses the `mathjs` library for matrix operations
+* Designed for modern Node.js environments (ES modules)
+* Supports investor views (absolute and relative views) with confidence levels
 
-## 前提条件
+## Prerequisites
 
-* Node.js (v20.x 以降推奨、このプロジェクトは v22.x で開発・テストされました)
-* npm (Node.js に同梱)
+* Node.js (v20.x or later recommended; this project was developed and tested with v22.x)
+* npm (included with Node.js)
 
-## インストール
+## Installation
 
-1.  **リポジトリをクローンします (もしGitリポジトリにある場合):**
+1.  **Clone the repository (if using a Git repository):**
     ```bash
-    git clone <リポジトリのURL>
-    cd <リポジトリ名>
+    git clone <repository-url>
+    cd <repository-name>
     ```
 
-2.  **必要な依存パッケージをインストールします:**
+2.  **Install required dependencies:**
     ```bash
     npm install
     ```
-    これにより、`package.json` に記載されている `mathjs`, `ts-node`, `typescript` などのライブラリがインストールされます。
-    （もし `package.json` が提供されていない場合は、個別にインストールしてください）
+    This will install the libraries listed in `package.json`, including `mathjs`, `ts-node`, and `typescript`.
+    (If `package.json` is not provided, install them individually)
     ```bash
     npm install mathjs
     npm install --save-dev typescript ts-node @types/mathjs
     ```
 
-## 設定
+## Configuration
 
 ### `tsconfig.json`
 
-このプロジェクトは、最新のNode.js (ESM) 環境で動作するように設定されています。`tsconfig.json` の主要な設定は以下の通りです。
+This project is configured to run in a modern Node.js (ESM) environment. The main `tsconfig.json` settings are as follows:
 
 ```json
 {
@@ -58,68 +58,67 @@
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
-````
+```
 
-もし `tsconfig.json` がない場合は、以下のコマンドで生成し、上記のように設定してください。
+If `tsconfig.json` doesn't exist, generate it with the following command and configure it as shown above:
 
 ```bash
 npx tsc --init
 ```
 
-### 入力データ (`blackLitterman.ts` 内)
+### Input Data (in `blackLitterman.ts`)
 
-モデルへの入力は `blackLitterman.ts` ファイル内の `exampleUsage` 関数で設定されています。以下の項目を実際のデータに合わせて変更してください。
+Model inputs are configured in the `exampleUsage` function within the `blackLitterman.ts` file. Modify the following parameters to match your actual data:
 
-  * `marketCovariance` (`S`): 資産リターンの共分散行列 (N x N)
-  * `marketCapWeights` (`w_mkt`): 市場ポートフォリオの各資産のウェイト (N x 1)
-  * `riskAversion` (`delta`): 市場のリスク回避係数
-  * `P`: 投資家のビューのピッキング行列 (K x N)
-  * `Q`: 投資家のビューに対応する期待リターン (K x 1)
-  * `Omega`: ビューの誤差の共分散行列 (K x K)
-  * `tau`: 事前分布（均衡リターン）の不確実性を示すスカラー
+  * `marketCovariance` (`S`): Asset returns covariance matrix (N x N)
+  * `marketCapWeights` (`w_mkt`): Market portfolio weights for each asset (N x 1)
+  * `riskAversion` (`delta`): Market risk aversion coefficient
+  * `P`: Investor view picking matrix (K x N)
+  * `Q`: Expected returns corresponding to investor views (K x 1)
+  * `Omega`: View error covariance matrix (K x K)
+  * `tau`: Scalar indicating uncertainty of the prior distribution (equilibrium returns)
 
-## 実行方法
+## Execution
 
-以下のコマンドをプロジェクトのルートディレクトリで実行してください。
+Run the following command from the project root directory:
 
 ```bash
 node --loader ts-node/esm blackLitterman.ts
 ```
 
-または、以下のコマンドでも実行できる場合があります。
+Alternatively, you may also be able to run:
 
 ```bash
 npx ts-node --esm blackLitterman.ts
 ```
 
-実行すると、コンソールに以下の情報が出力されます。
+Upon execution, the following information will be output to the console:
 
-  * 入力データ
-  * 均衡期待リターン (Π)
-  * 事後期待リターン (E[R])
+  * Input data
+  * Equilibrium expected returns (Π)
+  * Posterior expected returns (E[R])
 
-## コード構成
+## Code Structure
 
-  * **`blackLitterman.ts`**: モデルの主要なロジックと実行例が含まれています。
-      * **型定義:**
-          * `Vector`: 数値の1次元配列。
-          * `Matrix`: 数値の2次元配列。
-          * `BlackLittermanInputs`: モデルへの入力パラメータのインターフェース。
-          * `BlackLittermanOutputs`: モデルからの出力のインターフェース。
-      * **主要関数:**
-          * `calculateEquilibriumReturns(...)`: 均衡期待リターン (Π) を計算します。
-          * `calculateBlackLittermanPosteriorReturns(...)`: 投資家のビューを反映した事後期待リターン (E[R]) を計算します。
-          * `runBlackLitterman(...)`: 上記の計算を実行し、結果を返します。
-          * `exampleUsage()`: モデルの具体的な使用例と入力データの設定を行います。
-      * **行列演算ヘルパー:** `mathjs` を利用した行列・ベクトル演算の基本的なラッパー関数。
+  * **`blackLitterman.ts`**: Contains the main model logic and execution example.
+      * **Type Definitions:**
+          * `Vector`: One-dimensional array of numbers.
+          * `Matrix`: Two-dimensional array of numbers.
+          * `BlackLittermanInputs`: Interface for model input parameters.
+          * `BlackLittermanOutputs`: Interface for model outputs.
+      * **Main Functions:**
+          * `calculateEquilibriumReturns(...)`: Calculates equilibrium expected returns (Π).
+          * `calculateBlackLittermanPosteriorReturns(...)`: Calculates posterior expected returns (E[R]) incorporating investor views.
+          * `runBlackLitterman(...)`: Executes the above calculations and returns results.
+          * `exampleUsage()`: Provides a concrete usage example with input data configuration.
+      * **Matrix Operation Helpers:** Basic wrapper functions for matrix/vector operations using `mathjs`.
 
-## ライセンス
+## License
 
-このプロジェクトは特定のライセンスを設定していません。自由にご利用ください。
-(必要であれば、MIT License などを追記してください。)
+This project does not specify a particular license. Feel free to use it as you wish.
+(Add an MIT License or similar if needed.)
 
-## 注意点
+## Notes
 
-  * この実装はブラックリッターマンモデルのコアな計算部分を提供するものであり、実際の投資判断に利用する際は、入力データの正確性やモデルの前提条件・限界について十分な理解が必要です。
-  * 事後期待リターンを元にした実際のポートフォリオ最適化（ウェイト計算）は、このコードには含まれていません。別途、平均分散最適化などの手法を実装・利用する必要があります。
-
+  * This implementation provides the core computational part of the Black-Litterman model. When using it for actual investment decisions, a thorough understanding of input data accuracy and the model's assumptions and limitations is required.
+  * Actual portfolio optimization (weight calculation) based on posterior expected returns is not included in this code. You will need to implement or use additional methods such as mean-variance optimization separately.
